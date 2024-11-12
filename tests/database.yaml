@@ -1,0 +1,74 @@
+mysql.url:
+  dialect: "mysql"
+  url: "mysql+pymysql://test_user:StrongPassword!123@localhost:3306/quik_db"
+  options:
+    connect_args:
+      connect_timeout: 5
+mysql.params:
+  dialect: "mysql"
+  connection_params:
+    username: "test_user"
+    password: StrongPassword!123
+    host: "localhost"
+    port: 3306
+    database: "quik_db"
+  options:
+    connect_args:
+      connect_timeout: 5
+postgresql.url:
+  dialect: "postgresql"
+  url: "postgresql://test_user:StrongPassword!123@localhost:5432/quik_db"
+  options:
+    connect_args:
+      connect_timeout: 5
+postgresql.params:
+  dialect: "postgresql"
+  connection_params:
+    username: "test_user"
+    password: "StrongPassword!123"
+    host: "localhost"
+    port: 5432
+    database: "quik_db"
+
+mssql.params:
+  dialect: "mssql"
+  connection_params:
+    username: "test_user"
+    password: "StrongPassword!123"
+    host: "localhost"
+    port: 1433
+    database: "quik_db"
+  schema_name: "dbo"
+  query_settings:
+    prefix_schema: quik_db.dbo
+  options:
+    connect_args:
+      timeout: 5
+mssql.url:
+  dialect: "mssql"
+  url: "mssql+pymssql://test_user:StrongPassword!123@localhost:1433/quik_db"
+  schema_name: "dbo"
+  query_settings:
+    prefix_schema: quik_db.dbo
+  options:
+    connect_args:
+      timeout: 5
+oracle.params:
+  dialect: "oracle"
+  connection_params:
+    username: "test_user"
+    password: "StrongPassword!123"
+    host: "localhost"
+    port: 1521
+    query:
+      service_name: "FREEPDB1"
+  schema_name: "test_user"
+
+
+oracle.url:
+  dialect: "oracle"
+  url: "oracle+oracledb://test_user:StrongPassword!123@localhost:1521/?service_name=FREEPDB1"
+  schema_name: "test_user"
+# sqlite.url:
+#   dialect: "sqlite"
+#   url: "sqlite:///test_data.db"

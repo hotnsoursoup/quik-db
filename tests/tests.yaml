@@ -1,0 +1,269 @@
+valid_tests:
+  - name: Test limit field
+    test: schema.db.valid.q_settings.limit
+    dialect: any
+    config:
+      query_settings:
+        limit: 50
+
+  - name: Enable_fetch explicitly enabled
+    test: schema.db.valid.q_settings.enable_fetch.True
+    dialect: any
+    config:
+      query_settings:
+        enable_fetch: True
+
+  - name: Prefix_schema enabled and only prefix_queries enabled
+    test: schema.db.valid.q_settings.prefix_schema
+    dialect: any
+    config:
+      query_settings:
+        prefix_schema: my_custom_schema
+        prefix_queries: True
+
+  - name: Prefix_schema enabled and only prefix_procedures enabled
+    test: schema.db.valid.q_settings.prefix_schema
+    dialect: any
+    config:
+      query_settings:
+        prefix_schema: my_custom_schema
+        prefix_queries: True
+
+  - name: Limit explicitly set to 0
+    test: schema.db.valid.q_settings.limit
+    dialect: any
+    config:
+      query_settings:
+        limit: 0
+
+  - name: Valid Oracle URL with encoding and custom schema
+    test: schema.db.valid.options.connect_args
+    dialect: oracle
+    config:
+      schema_name: FREEPDB
+      options:
+        connect_args:
+          encoding: UTF-8
+          nencoding: UTF-8
+
+  - name: Disable fetching
+    test: schema.db.valid.q_settings.enable_fetch.False
+    dialect: any
+    config:
+      query_settings:
+        enable_fetch: false
+
+  - name: Options with SSL configuration
+    test: schema.db.valid.options.connect_args.ssl
+    dialect: any
+    config:
+      options:
+        connect_args:
+          ssl:
+            ca: /path/to/ca.pem
+            cert: /path/to/client-cert.pem
+            key: /path/to/client-key.pem
+
+  - name: Valid connection with custom options and connect timeout
+    test: schema.db.valid.options.connect_args.connect_timeout.15
+    dialect: any
+    config:
+      options:
+        connect_args:
+          connect_timeout: 15
+
+  - name: Valid configuration with schema mappings
+    test: schema.db.valid.result_as_mappings.True
+    dialect: any
+    config:
+      result_as_mappings: True
+
+  - name: Options with pool size and max overflow
+    test: model.db.valid.options
+    dialect: any
+    config:
+      options:
+        pool_size: 15
+        max_overflow: 5
+
+  - name: Valid MySQL connection with multiple query parameters
+    test: model.db.valid.connection_params.query
+    dialect: mysql
+    root_key: connection_params
+    config:
+      connection_params:
+        query:
+          charset: utf8mb4
+          ssl_ca: /path/to/ca.pem
+          ssl_cert: /path/to/client-cert.pem
+          ssl_key: /path/to/client-key.pem
+          connect_timeout: 10
+          allow_multi_statements: True
+
+  - name: PostgreSQL connection with multiple query parameters
+    test: model.db.valid.postgresql
+    dialect: postgresql.params
+    config:
+      connection_params:
+        query:
+          sslmode: require
+          application_name: my_app
+          connect_timeout: 15
+          target_session_attrs: read-write
+          keepalives: 1
+          keepalives_idle: 30
+
+  - name: Valid MSSQL connection with multiple query parameters
+    test: model.db.valid.mssql
+    dialect: mssql
+    config:
+      connection_params:
+        query:
+          driver: ODBC Driver 17 for SQL Server
+          trust_server_certificate: yes  # Or True, depending on the context
+          encrypt: True
+          application_intent: ReadOnly  # Or ReadWrite, if writing is needed
+          multi_subnet_failover: yes
+          connect_timeout: 10
+
+  - name: Valid Oracle connection with multiple query parameters
+    test: model.db.valid.oracle
+    dialect: oracle
+    config:
+      connection_params:
+        query:
+          service_name: test_service
+          mode: SYSDBA
+          events: True
+          purity: SELF
+          expire_time: 30
+          edition: ORA$BASE
+          connect_timeout: 10
+
+  # For further development
+  # - name: Valid SQLite connection with multiple query parameters
+  #   test: model.db.valid.sqlite
+  #   dialect: sqlite
+  #   config:
+  #     connection_params:
+  #       query:
+  #         timeout: 30
+  #         isolation_level: SERIALIZABLE
+
+invalid_tests:
+  - name: Missing dialect field
+    test: model.db.invalid.missing.dialect
+    dialect: any
+    error: missing_dialect
+    config:
+      dialect: null
+
+  - name: Invalid prefix_settings - missing prefix_schema
+    test: model.db.invalid.q_settings.prefix_schema
+    dialect: any
+    error: invalid_prefix_settings
+    config:
+      query_settings:
+        prefix_schema: null
+        prefix_queries: True
+        prefix_procedures: True
+
+  - name: Configuration with both URL and connection parameters
+    test: model.db.invalid.url.connection_params
+    dialect: any
+    error: invalid_url_and_params
+    config:
+      url: "driver://user:pass@localhost:3306/db_name"
+      connection_params:
+        username: user
+        password: pass
+        host: localhost
+        port: 3306
+
+
+  - name: Invalid prefix configuration
+    test: model.db.invalid.q_settings.prefix_schema
+    dialect: any
+    error: invalid_prefix_settings
+    config:
+      query_settings:
+        prefix_schema: custom_prefix
+        prefix_queries: false
+        prefix_procedures: false
+
+  - name: Incomplete connection parameters - missing host
+    test: model.db.invalid.params.host.null
+    dialect: any
+    error: invalid_params
+    config:
+      connection_params:
+        host: null
+        username: user
+        password: pass
+        port: 1521
+
+  - name: Missing both URL and connection parameters
+    test: model.db.invalid.missing.url_and_params
+    dialect: any
+    error: missing_url_or_params
+    config:
+      url: null
+      connection_params: null
+
+  # - name: Non-existent SQLite URL
+  #   test: model.db.invalid.path.non_existent
+  #   dialect: sqlite
+  #   error: file_path_does_not_exist
+  #   config:
+  #     url: /non_existent_path/non_existent_file.db
+
+multi_db:
+  invalid_tests:
+      - name: Multiple default databases
+        test: model.multi_db.conflicting_defaults
+        dialect: any
+        error: multiple_default_db
+        config:
+          db1:
+            dialect: mssql
+            url: mssql+pymssql://test_user:password@localhost:1433/quik_db
+            default: True
+          db2:
+            dialect: sqlite
+            url: sqlite:///test_user.db
+            default: True
+      - name: Invalid value for database
+        test: model.multi_db.invalid_nesting
+        dialect: any
+        error: invalid_nesting
+        config:
+          db1:
+            dialect: mssql
+            url: mssql+pymssql://test_user:password@localhost:1433/quik_db
+            default: True
+          db2: string
+  valid_tests:
+      - name: Valid multi-database configuration
+        test: model.multi_db.valid
+        dialect: any
+        assertion: ""
+        config:
+          db1:
+            dialect: mssql
+            url: mssql+pymssql://test_user:password@localhost:1433/quik_db
+          db2:
+            dialect: sqlite
+            url: sqlite:///test_user.db
+      - name: Valid multi-database config with a default database
+        test: model.multi_db.valid
+        dialect: any
+        assertion: return=db1.values()
+        config:
+          db1:
+            dialect: mssql
+            url: mssql+pymssql://test_user:password@localhost:1433/quik_db
+            default: True
+          db2:
+            dialect: sqlite
+            url: sqlite:///test_user.db
+            default: False

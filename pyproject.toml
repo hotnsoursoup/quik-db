@@ -1,0 +1,237 @@
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quik_db"
+version = "0.1.0"
+authors = [
+  { name = "Victor Nguyen", email = "victor.win86@gmail.com" },
+]
+description = "A python library for a streamlined database experience from config file"
+readme = "docs/README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+keywords = ["database", "SQL", "config", "ORM", "streamlined"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Cython",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database"
+]
+
+dependencies = [
+    "pydantic>=2.9.1",
+    "SQLAlchemy>=2.0.34",
+    "sqlparse>=0.5.1",
+    "sqlglot>=25.29.0",
+    "python-dateutil>=2.8.2",
+]
+
+[project.optional-dependencies]
+
+mysql = ["pymysql"]
+mariadb = ["mariadb"]
+postgresql = ["psycopg2>=2.9.6"]
+mssql = ["pymssql>=2.2.0"]
+oracle = ["oracledb>=2.3.0"]
+
+all_dbs = [
+    "pymysql",
+    "psycopg2>=2.9.6",
+    "pymssql>=2.2.2",
+    "oracledb>=2.3.0",
+    "mariadb",
+]
+
+dev = [
+    "ruff",
+    "bandit",
+    "black",
+    "isort",
+]
+
+test = [
+    "pytest",
+    "pytest-html",
+    "pytest-order",
+    "pyaml-env",
+]
+
+all = [
+    "pymysql",
+    "psycopg2>=2.9.6",
+    "pymssql>=2.2.2",
+    "oracledb>=2.3.0",
+    "mariadb",
+    "ruff",
+    "bandit",
+    "black",
+    "isort",
+    "pytest",
+    "pytest-html",
+    "pytest-order",
+    "pyaml-env",
+]
+
+[project.urls]
+homepage = "https://github.com/hotnsoursoup/quik_db"
+documentation = "https://github.com/hotnsoursoup/quik_db/docs"
+testing = "https://github.com/hotnsoursoup/quik_db/docs/tests.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["quik_db*"]
+
+[tool.coverage.paths]
+quik_db = ["src/quik_db", "*/quik_db/src/quik_db"]
+tests = ["tests", "*/quik_db/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[tool.mypy]
+files = ["src", "tests"]
+plugins = []
+
+[tool.black]
+line-length = 79
+
+[tool.ruff]
+src = ["src", "tests"]
+fix = true
+preview = true
+line-length = 79
+
+exclude = [
+    "build",
+    "dist",
+    "dev",
+    "migrations",
+    "__pycache__",
+    "manage.py",
+    "settings.py",
+    "env",
+    ".env",
+    "venv",
+    ".venv",
+]
+
+[tool.ruff.lint]
+select = [
+  "D213",  # Multi-line docstring summary should start at the second line
+  "F",     # Pyflakes for undefined variables, unused imports, etc.
+  "E", "W",  # Pycodestyle rules for stylistic issues
+  "E302",  # Expected 2 blank lines, found 1
+  "B",     # flake8-bugbear for likely bugs and design issues
+  "Q",     # flake8-quotes for consistent quote usage
+  "PL",    # Pylint for general linting
+  "PT",    # flake8-pytest-style for pytest consistency
+  "TID",   # Tidy imports
+  "ISC",   # Implicit string concatenation
+  "TCH",   # Type-checking imports
+  "C4",    # Comprehension optimizations
+  "PGH",   # Pygrep hooks for regex rules
+  "RUF",   # Ruff-specific rules
+  "PERF",  # Performance-based lints
+  "FLY",   # String formatting improvements
+  "FA",    # Future annotations
+  "RSE",   # Proper raise exceptions
+]
+ignore = [
+  "I001",  # Ignore import errors
+  "F541",  # Ignore f-string issues
+  "PERF401",  # Ignore comprehension performance lint
+  "FBT001", "FBT002", "FBT003",  # Ignore boolean traps in function args
+  "PLR0913",  # Ignore "too many arguments" warnings
+  "W293", "W291",  # Ignore whitespace warnings
+  "PLR6201", # literal membership
+  "PLR0912",  # Ignore "too many branches" warnings
+  "PLR0904",
+]
+typing-modules = ["src/quik_db/._typing.py"]
+
+[tool.ruff.per-file-ignores]
+"quik_db/_typing.py" = ["TCH"]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+
+[tool.isort]
+profile = "black"
+line_length = 79  # Align with Ruff and Black
+
+known_third_party = [
+  "pydantic",
+  "sqlfluff",
+  "SQLAlchemy",
+  "glom",
+  "sqlparse",
+  "sqlglot",
+  "ruff",
+  "bandit",
+  "black",
+  "isort",
+  "pre-commit",
+  "pytest",
+  "pytest-html",
+  "pyaml-env",
+  "pytest-order",
+  "python-dateutil",
+  "pymysql",
+  "psycopg2",
+  "pymssql",
+  "oracledb",
+  "mariadb"
+]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+lines_after_imports = 2
+combine_as_imports = true
+force_grid_wrap = 3
+
+[tool.pylint]
+disable = [
+  "E1101",  # Accessing non-existent members
+  "R0913",  # Too many arguments
+  "R0902",  # Too many instance attributes
+  "R0903",  # Too few public methods
+  "R0914",  # Too many local variables
+  "E0237",  # Assigning non-slot attributes
+  "E0401",  # Import-error
+  "E0611",  # No name in module
+]
+ignored-modules = ["__init__", "quik_db._typing"]
+
+[tool.flake8]
+per-file-ignores = [
+    "__init__.py"
+]
+
+[tool.pylint.MASTER]
+ignore-patterns = "__init__.py"
+
+[tool.pytest.ini_options]
+markers = [
+    "connection: mark tests that require a database connection",
+    "model: test to validate configs with models",
+    "success: test to validate successful operations",
+    "exception: test that will raise exceptions",
+    "function: test for specific methods or functions",
+    "base: a test function for any base connectivity or setup",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+console_output_style = "classic"
+addopts = "--maxfail=16 -rf --html=./tests/reports/report.html --tb=long -vv"
