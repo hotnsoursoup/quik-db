@@ -201,7 +201,6 @@ class DatabaseModel(BaseModel):
         else:
             dialect = values.get("dialect")
             url = values.get("url")
-            use_params = values.get("use_params")
             # Check for missing dialect
             if not dialect:
                 errors.append(create_error_msg("missing_dialect"))
@@ -233,8 +232,6 @@ class DatabaseModel(BaseModel):
                 if not url or ".db" not in url:
                     errors.append(create_error_msg("missing_sqlite_url"))
                 if params:
-                    errors.append(create_error_msg("invalid_sqlite_params"))
-                if use_params:
                     errors.append(create_error_msg("invalid_sqlite_params"))
             else:
                 if url and params:
