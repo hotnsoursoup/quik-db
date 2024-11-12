@@ -36,12 +36,13 @@
     - [Execution flow handlers (Connection)](#execution-flow-handlers-connection)
 - [SQLAlchemyConnection](#sqlalchemyconnection)
     - [Connection Types in `SQLAlchemyConnection`](#connection-types-in-sqlalchemyconnection)
-    - [New sessions from the same sessionmaker](#new-sessions-from-the-same-sessionmaker)
+    - [Generating new sessions](#generating-new-sessions)
+- [License](#license)
 
 # Introduction
 
 This library provides a lightweight and straightforward way to create database
-connection objects using dictionaries. It includes utilities for input sanitization,
+connection objects from a configuration file. It includes utilities for input sanitization,
 paging, generating stored procedure queries, execution handling, and result
 processing.
 
@@ -50,10 +51,31 @@ to subclass for other DBAPI implementations.
 
 ### Key Features
 
-- **Flexible Configurations**: Supports both single and multi-database setups.
-- **Pydantic Validation**: Ensures configurations adhere to predefined models.
-- **Raw SQL Support**: Supports modification of raw sql with paging (limit, offset), fetching, and more.
-- **Extensibility**: Allows adding custom handlers for pre- and post-execution processing.
+- **Flexible Configurations**: Supports both single and multi-database configurations.
+  - Configurations support both `url` and `connection_params` configurations for database connections.
+    - Can generate the `url` for the database connection from `connection_params`, including query args in a configuration setting so its easier to manage.
+  - Direct support of SqlAlchemy engine options in configuration.
+  - Modify the config after instantiation
+    - (e.g.) db.config.query_settings.enable_fetch = False
+    - (e.g.) db.config.connection_params.query = {} # Insert a dictionary of query arguments for url generation.
+- **Pydantic Validation**: Ensures configurations adhere to predefined models to ensure functionality.
+  - (e.g.) db = Connection(config) # Config is validated on import
+- **Raw SQL Support**: Supports generation and modification of raw sql statements.
+  - Auto generates stored procedure calls by simply providing the procedure name in `execute_sp`.
+    - (e.g.)  db.execute_sp('my_procedure') # Generates based on `dialect` in the configuration.
+  - Can auto-prefix stored procedures with a schema.
+  - Can auto-prefix all tables in a sql statement with the given schema. The library has CTE detection and supports sub queries.
+  - Can modify sql queries to include offset and limit
+- **Result object Management**: Includes various features for managing results
+  - Control result output with `result_as_mappings` config (converts results to a list of mappings instead of tuples)
+    - Done in config, or db.config.result_as_mappings = True
+  - Saves execution state data `including` query/params through each stage of transformation.
+  - Auto saves columns retrieves in db.vars.columns
+- **Extensibility**: Allows adding custom handlers for pre/post-execution data processing.
+  - (e.g.) db.param_handlers = [sanitizer_params, my_param_converter]
+  - (e.g.) db.result_handlers = [myfunc, my_redact_func]
+  - (e.g.) db.execution_handler = my_custom_execution_flow_handler
+  - You can also add them all at once during instantiation.
 
 ### In Development
 
@@ -61,6 +83,7 @@ to subclass for other DBAPI implementations.
 - **Testing**: Complete testing suite for all available commands. Add in log to DB (instead of csv and html), etc.
 - **Docs**: Comprehension docs, split into smaller, readable formats. ReadtheDocs integration.
 - **Error Handler**: A better error handling mechanism for error_handler function(s).
+- **Direct Config File Management**: Provide your configuration as a path into the connection object and it will import it for you. (With initial design to support yaml/json)
 
 ### Feature Roadmap
 
@@ -73,7 +96,7 @@ to subclass for other DBAPI implementations.
 
 ### Optional Dependencies
 
-Project optional dependencies include depedencies for development and testing. For tests to function, install all and refer to the tests documentation in docs\tests.md.
+Project optional dependencies include depedencies for development and testing.
 
 ### Quick Reference Table
 
@@ -87,7 +110,7 @@ Project optional dependencies include depedencies for development and testing. F
 Set up your configuration file and import it (as a dictionary). You can use any configuration type you want so long as it matches the model defined below. For the following example, we will use yaml.
 ### Testing
 
-The github repo for this library includes tests. Check it out in https://github.com/hotnsoursoup/quik-db/docs/tests.md.
+The github repo for quik-db includes a full test configuration, including docker compose, and instructions for configuring the test environment. Read the full documentation here:  https://github.com/hotnsoursoup/quik-db/blob/master/docs/tests.md.
 
 
 # Quick Start
@@ -115,7 +138,29 @@ connection_params:
   host: localhost
   user: !ENV {DB_USER}
   password: !ENV {DB_PASSWORD}
+```
 
+A more advanced example supports sqlalchemy engine options. (Support for the exact settings may change/vary depending on driver). See https://docs.sqlalchemy.org/en/20/core/engines.html#sqlalchemy.create_engine for more information on what can be passed in.
+
+```yaml
+dialect: oracle
+description: PrimaryOracle database used for logging.
+connection_params:
+  drivername: oracle+oracledb
+  host: localhost
+  user: !ENV {DB_USER}
+  password: !ENV {DB_PASSWORD}
+  query:
+    schema_name: FREEPDB1
+  options:
+    hide_parameters: True
+    echo: False
+    encoding: utf-8
+    execution_options:
+      isolation_level: SERIALIZABLE
+      logging_name: mysql_db1
+    pool_size: 15
+    max_overflow: 5
 ```
 
 A shorthand import of the SQLAlchemy connection.
@@ -228,7 +273,7 @@ procedure_name = "getuser"
 db.execute_sp(procedure_name)
 ```
 
-NOTE: Any procedure that has a schema attached will not have the schema defined in the prefix_schema added. For queries, the library will examine the sql query and add the schema to tables in the query, with respect to CTE's.
+NOTE: The library automatically detects if there is already a schema/table name attached the procedure name by looking for a `.` in the name. If it does find it, it will not make a change. For queries, the library will examine the sql query and add the schema to tables in the query, with respect to CTE's.
 
 The method can be called directly as well.
 
@@ -341,13 +386,14 @@ GROUP BY ci.Customer_Name,
 
 ## The Result Object
 
-The `Result object` for SQLAlchemy provides numerous features. It can act similar to
+The `Result` object for SQLAlchemy provides numerous features. It can act similar to
 a cursor where you may want to iterate through the rows to process your data or
 access the attributes to see if your data manipulation query was successful.
 
 Here's how you can access the Result object **after** execution. This is important
-when you only fetch a subset of the data (see fetch below). After fetching results,
-the result object will lose any metadata associated with the rows (such as columns)
+when you only fetch a subset of the data . After fetching all results,
+the result object will lose any metadata associated with the rows (such as columns), but the
+connection object will retain that information for you.
 
 In some unsupported dialects, the obj.result will return the result and not the result object.
 
@@ -358,8 +404,12 @@ print(db.result)
 # Counting remaining rows (select query) OR see affected rows (data manipulation query)
 print(db.result.rowcount)
 
-# Fetching any additional results via fetch (assuming they already haven't)
-db.result.fetchall()
+# Get the columns from the result
+print(db.vars.columns)
+
+# Fetching any additional results via fetch. See below for more fetch options
+if db.result.rowcount > 1:
+   db.result.fetchall()
 ```
 
 ## Fetch, Offset, and Limit
@@ -384,17 +434,13 @@ query_settings:
 ```
 
 ```python
-# Set on the specific instance
-db.limit = 10
-```
+# Set on the specific instance. This will modify all select queries.
+db.config.limit = 10
 
-```python
-# Set at execution and used with offset
-offset = 50
-limit = 30
-result = db.execute(query, params, offset=offset, limit=limit)
+# Set at execution, used with offset, and passed in as function args
+result = db.execute(query, params, offset=50, limit=30)
 
-# Set at execution using method chaining
+# Set at execution using method chaining. Execute must be last in the chain.
 result = db.offset(50).limit(30).execute(query, params)
 
 ```
@@ -415,12 +461,15 @@ data = db.fetch(50).execute(query, args)
 
 ```
 
-Accessing the remaining rows on the Result object.
+Accessing the remaining rows on the `Result` object.
 
 ```python
+# Fetch only 50 rows in a result set of over 50.
 data = db.execute(query, args, fetch=50)
 
-fetched_results = db.result.fetchall()
+# Fetch remaining by accessing the result object
+if db.result.rowcount > 1:
+   fetched_results = db.result.fetchall()
 ```
 
 Using the fetch method will automatically fetch from the current result object
@@ -435,12 +484,17 @@ while db.result.rowcount > 0:
 
 ## Disable all fetching
 
-You can disable automatic fetching after execution by setting `enable_fetch: False` in the configuration.
-
+You can disable automatic fetching after execution by setting `enable_fetch: False` in the configuration or on the instance.
 ```yaml
+# yaml
 dialect: mysql
 url: "mysql+pymysql://user:pass@localhost:3306/mysql"
 enable_fetch: False
+```
+
+```python
+# Changed at the intance. Default is True.
+db.config.query_settings.enable_fetch = False
 ```
 
 # Configuration File Models
@@ -456,13 +510,17 @@ Examples shown are using the **SQLAlchemyConnection** class.
 ### Single Database Model
 
 - **Required Fields:**
+  - **Valid Dialect**
+    - Dialect must be one of the supported dialects listed below in the default drivers section.
   - **For SQLite:**
-    - `path`: Specify the path to your SQLite database file.
+    - `url`: Specify the path to your SQLite database file.
   - **For Other Dialects:**
     - `dialect`: Specify the database dialect (e.g., "mysql", "postgresql", "sqlite").
-    - Either `url` (connection string) or `params` (connection parameters) must be provided. If both are present, `url` will take precedence.
-      - If connection_params are used for the connection, host and username are required.
-    - Enabling `add_schema_prefix` in `query_settings` to enable prefixing of stored procedures requires `schema` to be defined in `connection_params`
+    - Either `url` (which is the connection string) or `connection_params` must be provided. If both are present, the model will error. (Future versions may just provide one superceding the other)
+      - If `connection_params` are used for the connection, host and username are required.
+    - Setting `query_settings.prefix_schema` requires either `query_settings.prefix_procedures` or `query_settings.prefix_queries` to be set True or neither of them set. (If neither are set, the model will assume both are `True`). They both cannot be `False`.
+      - Conversely, if either option is set to `True`, the value in `prefix_schema` must be set.
+    - If a `drivername` is not specified in `connection_params`, the default driver will be used. See below.
 - **Dialect Drivers:**
   - **Description:**
       Each supported dialect comes with its associated driver string.
@@ -498,7 +556,7 @@ connection_params:
    user: myuserid
    password: mypass1
    database: mydatabase
-   query:
+   query: # passed as a query argument and not a sqlalchemy option
       pool_size: 20
       pool_timeout: 30
 ```
@@ -525,7 +583,7 @@ Note - some are not yet be implemented (such as odbc and orm)
 | `result_as_mappings` | bool                                                       | No                                           | Return query results as mappings instead of tuples.                                                                                                                            | Helps manage the format of returned query results.  |
 | `schema_name`        | str                                                        | No                                           | The schema to use with the connection.                                                                                                                                         | Useful for queries requiring schema specification.  |
 | `url`                | str                                                        | No                                           | Connection string (for SQL Alchemy or ODBC).                                                                                                                                   |
-| `options`            | dict[str, str]                                             | Additional options to pass to the connection | Mapping to be passed into the connect() method. For `SQLAlchemyConnection`, these are sent as engine options. May not be supported by all database libraries when subclassing. |
+| `options`            | dict[str, str]                                             | Additional options to pass to the connection | Mapping to be passed into the connect() method. For `SQLAlchemyConnection`, these are sent as engine options. May not be supported by all database libraries when subclassing. | Refer to SqlAlchemy docs for more information. https://docs.sqlalchemy.org/en/20/core/engines.html#sqlalchemy.create_engine
 | `schema_name`        | str                                                        |                                              | Currently unused                                                                                                                                                               |
 
 ### ConnectionParams
@@ -558,12 +616,14 @@ Nested in DatabaseModel
 ### MultiDatabaseModel
 
 This model supports configurations for multiple databases. Each database is
-represented by a `name` (key) in the configuration file and the value is a single
-database model (BaseDatabaseModel).
+represented by a `name` (key) in the configuration file and the value is a dictionary that conforms to the DatabaseModel. (Utilizes a nested structure).
+
+Note, only one db can be configured as the default DB, otherwise the model validation will fail.
 
 Example:
 
 ```yaml
+# Yaml
 mydefaultdatabase:
    dialect: mysql
    default: True
@@ -573,13 +633,12 @@ mydefaultdatabase:
       user: myuserid
       password: mypass1
       database: mydatabase
-      options:
-         pool_size: 20
-         pool_timeout: 30
 myloggingdb:
    dialect: sqlite
    path: mysqlitedb.db
 ```
+
+Code, assume the above has been imported as `config`.
 
 ```python
 from quik_db import SQLAlchemyConnection as connection
@@ -606,7 +665,7 @@ these scenarios will occur.
       mydb1:
          default: True
          dialect: mysql
-         url:"mysql+pymysql://username:password@localhost:3306/mysql"
+         url: "mysql+pymysql://username:password@localhost:3306/mysql"
       ```
 
    - The model validation ensures only 1 can be set to default.
@@ -766,14 +825,14 @@ def redact_names(data):
     # Redact sensitive names from data
     pass
 
-# Add handler to instance
+def my_exc_handler(result_data):
+  # do things
+
+# if the handler supports a list of Callables. (result handler does)
 db.result_handlers = [redact_names, result_to_dict]
 
-# Or if the handler supports a list of Callables. (result handler does)
-db.result_handlers = [redact_names, result_to_dict]
-
-# Or has a special method to add
-db.add_result_handler(redact_names)
+# Execution handler only allows for one callable
+db.execution_handler = myexc_handlr
 
 ```
 
@@ -791,13 +850,12 @@ db.add_result_handler(redact_names)
 
 SQLAlchemyConnection is the primary connection object of the library. It is a subclass of the DatabaseConnection class with methods for session management. The input args provide flexibility in configuring the type of connection or session you may want to use.
 
-| argument     | Type                                                | default | Description                                                                       | Notes |
-| ------------ | --------------------------------------------------- | ------- | --------------------------------------------------------------------------------- | ----- |
+| argument     | Type                                                | default | Description                                                                       |
+| ------------ | --------------------------------------------------- | ------- | --------------------------------------------------------------------------------- |
 | config       | dict                                                |         | The database configuration                                                        |
 | name         | str                                                 | None    | For multidatabase models, the name (key) of the database connection configuration |
-| connect      | bool                                                | False   | If True, automatically connect when the object is created                         |
-| session_type | session_type: Literal["scoped", "standard"] \| None | None    |
-| session      |
+| connection_type | Literal["scoped", "session", "direct"]    | direct  | Determines the connection type to be created when self.connect() is called.  |
+| session      | Session \| scoped_session \| None |  None | A variable used to pass in an existing session_factory from another SqlAlchemyConnection object. See below for more information.  |
 
 ### Connection Types in `SQLAlchemyConnection`
 
@@ -817,20 +875,22 @@ config_file = "\path\to\config.yaml"
 config = parse_config(config_file)
 
 # Create the connection using scoped session
-connection = db(config, use_scoped_session=True)
+connection = db(config, connection_type="scoped")
 
+# Execute as normal
 connection.execute("select * from users")
-
 ```
 
-### New sessions from the same sessionmaker
+### Generating new sessions
 
-If you want to create additional sessions from the same sessionmaker, you simply call Session() on the connection. This creates a new object with the same reference to the original sessionmaker.
-
+You can generate a new session by directly calling the session method. The new session object will retain all the original configuration details of the original object. (Please keep in mind that changes to any mutable configurations will affect all instances)
 ```python
-new_session = connection.Session()
+# Generate a new SqlAlchemyConnection object using an existing session. (Has to be session type and not direct)
+new_session = connection.session()
 
-new_session.execute(query)
+new_session.execute("select 1")
 ```
 
+
+# License
 `quik_db` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
