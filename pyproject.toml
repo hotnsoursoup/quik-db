@@ -3,7 +3,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quik_db"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
   { name = "Victor Nguyen", email = "victor.win86@gmail.com" },
 ]
