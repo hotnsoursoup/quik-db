@@ -3,7 +3,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quik_db"
-version = "0.1.1"
+version = "0.1.2"
 authors = [
   { name = "Victor Nguyen", email = "victor.win86@gmail.com" },
 ]
@@ -80,9 +80,9 @@ all = [
 ]
 
 [project.urls]
-homepage = "https://github.com/hotnsoursoup/quik_db"
-documentation = "https://github.com/hotnsoursoup/quik_db/docs"
-testing = "https://github.com/hotnsoursoup/quik_db/docs/tests.md"
+homepage = "https://github.com/hotnsoursoup/quik-db"
+documentation = "https://github.com/hotnsoursoup/quik-db/tree/master/docs"
+testing = "https://github.com/hotnsoursoup/quik-db/blob/master/docs/tests.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
