@@ -680,7 +680,7 @@ class SqlAlchemyConnection(DatabaseConnection):
         config: dict,
         name: str = "",
         connection_type: Literal["scoped", "session", "direct"] = "direct",
-        session: Session | None = None,
+        session: Session | scoped_session | None = None,
     ) -> None:
         """
         Initialize the database connection.
