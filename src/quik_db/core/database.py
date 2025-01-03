@@ -680,7 +680,7 @@ class SqlAlchemyConnection(DatabaseConnection):
         config: dict,
         name: str = "",
         connection_type: Literal["scoped", "session", "direct"] = "direct",
-        session: Session | scoped_session | None = None,
+        session: sessionmaker | scoped_session | None = None,
     ) -> None:
         """
         Initialize the database connection.
@@ -727,24 +727,22 @@ class SqlAlchemyConnection(DatabaseConnection):
             config=self.config,
             name=self.name,
             connection_type=self.connection_type,
-            session=self._session_factory(),  # pyright: ignore[reportCallIssue]
+            session=self._session_factory,
         )
 
     @override
-    def connect(self) -> Connection | Session | scoped_session:
+    def connect(self) -> Connection | sessionmaker | scoped_session:
         """Open, set, and return the connection."""
 
         if self.connection:
             return self.connection
 
-        # create a connection based off existing session
-        if self._session_factory:
-            self.connection = self._session_factory()
-
         conn_type = self.connection_type
 
         if conn_type == "direct":
             self.connection = self.engine.connect()
+        elif self._session_factory:
+            self.connection = self._session_factory()
         else:
             # Create a session and store it
             self._session_factory = self._create_session_factory()
